@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Le Fichier — Suivi des élèves</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:wght@400;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --card: #fbf3e8;
+  --card-dark: #f3e6d0;
+  --drawer: #cfe8e2;
+  --drawer-dark: #a9d6cd;
+  --ink: #4a4340;
+  --ink-soft: #8c8078;
+  --stamp-red: #e2a79b;
+  --stamp-red-dark: #b97a6c;
+  --stamp-green: #a3c9a8;
+  --stamp-green-dark: #6f9a76;
+  --rule: rgba(74,67,64,0.16);
+  --paper-shadow: rgba(120,100,90,0.28);
+  --focus: #6c8fbf;
+  --line: #5b4b45;
+  --lav: #d9c9e6;
+  --blue: #c3ddea;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background: var(--drawer-dark);
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(255,255,255,0.25), transparent 40%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 60px);
+  font-family: 'Courier Prime', monospace;
+  color: var(--ink);
+  min-height:100vh;
+}
+h1,h2,h3,.stamp-font{ font-family:'Special Elite', cursive; }
+.serif{ font-family:'Libre Baskerville', serif; }
+
+/* ---------- Focus visibility ---------- */
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible{
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ---------- Top bar (drawer label plate) ---------- */
+.topbar{
+  background: linear-gradient(180deg, var(--drawer) 0%, var(--drawer-dark) 100%);
+  border-bottom: 5px solid #8fc4b9;
+  padding: 18px 24px 22px;
+  position: sticky; top:0; z-index: 40;
+  box-shadow: 0 6px 14px rgba(70,90,85,0.18);
+}
+.topbar-inner{ max-width:1180px; margin:0 auto; display:flex; align-items:flex-end; gap:22px; flex-wrap:wrap; }
+.label-plate{
+  background: #fdf9f0;
+  border: 2px solid var(--line);
+  border-radius: 3px;
+  padding: 8px 18px;
+  box-shadow: 2px 2px 0 rgba(91,75,69,0.2);
+  transform: rotate(-1deg);
+}
+.label-plate h1{ margin:0; font-size: 1.5rem; letter-spacing:1px; color: var(--line); }
+.label-plate .sub{ font-family:'Courier Prime',monospace; font-size:0.72rem; color:#8a7f6e; margin-top:2px; }
+.topbar-tools{ display:flex; gap:10px; flex-wrap:wrap; margin-left:auto; align-items:center; }
+
+.btn{
+  font-family:'Courier Prime', monospace;
+  font-weight:700;
+  font-size: 0.82rem;
+  background:#fdf9f0;
+  color: var(--line);
+  border:2px solid var(--line);
+  border-radius:3px;
+  padding:9px 14px;
+  cursor:pointer;
+  box-shadow: 2px 2px 0 rgba(91,75,69,0.25);
+  transition: transform .08s ease;
+}
+.btn:hover{ transform: translate(-1px,-1px); box-shadow: 3px 3px 0 rgba(91,75,69,0.3); }
+.btn:active{ transform: translate(1px,1px); box-shadow: 0 0 0 rgba(91,75,69,0.3); }
+.btn.primary{ background: var(--stamp-red); color: #4a2e26; border-color: var(--stamp-red-dark); }
+.btn.ghost{ background:transparent; color: var(--line); border-color: var(--line); box-shadow:none; }
+.btn.small{ padding:6px 10px; font-size:0.72rem; }
+.btn.danger{ background:#e3b3ab; color:#4a2019; border-color:#b97a6c; }
+
+.searchrow{ display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; max-width:1180px; margin-left:auto; margin-right:auto; }
+.searchrow input[type="text"], .searchrow select{
+  font-family:'Courier Prime', monospace;
+  padding:9px 12px;
+  border-radius:3px;
+  border: 2px solid var(--line);
+  background:#fdf9f0;
+  color: var(--line);
+  font-size:0.85rem;
+}
+.searchrow input[type="text"]{ flex:1; min-width:180px; }
+
+/* ---------- Drawer / catalog grid ---------- */
+.drawer-wrap{ max-width:1180px; margin:0 auto; padding: 30px 22px 80px; }
+.class-section{ margin-bottom: 34px; }
+.class-section-title{
+  color: #3e3833;
+  font-size:1.02rem;
+  margin: 0 0 12px 2px;
+  display:flex; align-items:center; gap:10px;
+}
+.class-section-title .count{
+  font-family:'Courier Prime',monospace;
+  font-size:0.72rem;
+  background: rgba(255,255,255,0.55);
+  color: #3e3833;
+  padding:2px 8px;
+  border-radius:10px;
+}
+.card-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 16px;
+}
+
+/* ---------- Index card ---------- */
+.index-card{
+  background: var(--card);
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 27px, var(--rule) 28px);
+  border: 1px solid #e3d3ba;
+  border-radius: 2px;
+  box-shadow: 0 3px 0 #e3d3ba, 3px 6px 10px var(--paper-shadow);
+  padding: 12px 12px 10px;
+  cursor:pointer;
+  position:relative;
+  min-height: 210px;
+  display:flex; flex-direction:column;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.index-card:hover{ transform: translateY(-4px) rotate(-0.6deg); box-shadow: 0 3px 0 #e3d3ba, 5px 10px 16px var(--paper-shadow); }
+.index-card .rule-margin{
+  position:absolute; left: 34px; top:0; bottom:0; width:1px; background: rgba(226,167,155,0.55);
+}
+.card-photo{
+  width:56px; height:56px; border-radius:2px; object-fit:cover;
+  border:2px solid #b8a89a; background:#f0e4c9; float:left; margin-right:10px;
+}
+.card-photo.placeholder{ display:flex; align-items:center; justify-content:center; font-family:'Special Elite'; font-size:1.4rem; color:#b3a284; }
+.card-name{ font-family:'Special Elite'; font-size:0.95rem; line-height:1.15; margin-top:2px; }
+.card-class{ font-size:0.7rem; color:var(--ink-soft); margin-top:2px; }
+.card-levels{ margin-top:auto; padding-top:8px; display:flex; flex-wrap:wrap; gap:4px; }
+.pill{
+  font-size:0.62rem; font-weight:700; letter-spacing:0.3px;
+  padding:2px 7px; border-radius:9px; background:#e6ddd0; color:#4a4340;
+}
+.pill.a1{ background:#f3d9c9; color:#7a4a34; }
+.pill.a2{ background:#dcecd0; color:#4a6b3a; }
+.pill.b1{ background:var(--blue); color:#2f5468; }
+.pill.b2{ background:var(--lav); color:#5a3a76; }
+.card-flags{ position:absolute; top:8px; right:8px; display:flex; gap:4px; }
+.flag-dot{ width:9px; height:9px; border-radius:50%; background:var(--stamp-red); border:1px solid var(--stamp-red-dark); }
+.card-note-count{ font-size:0.62rem; color:var(--ink-soft); margin-top:6px; clear:both; }
+
+.empty-catalog{
+  color:#3e3833; text-align:center; padding: 60px 20px; font-family:'Special Elite';
+  opacity:0.9;
+}
+.empty-catalog .btn{ margin-top:14px; }
+
+/* ---------- Modal dossier ---------- */
+.overlay{
+  position:fixed; inset:0; background: rgba(70,60,55,0.55);
+  display:flex; align-items:center; justify-content:center; z-index:100;
+  padding: 20px;
+}
+.hidden{ display:none !important; }
+.dossier{
+  background: #fdf9f0;
+  width: min(880px, 100%);
+  max-height: 92vh;
+  overflow-y:auto;
+  border-radius: 4px;
+  box-shadow: 0 20px 60px rgba(70,55,45,0.35);
+  position:relative;
+}
+.dossier-head{
+  background: linear-gradient(180deg, #f7ecd9, #f0e0c4);
+  border-bottom: 3px solid var(--line);
+  padding: 18px 24px;
+  display:flex; align-items:center; gap:16px;
+  position: sticky; top:0; z-index:5;
+}
+.dossier-photo-wrap{ position:relative; }
+.dossier-photo{ width:78px; height:78px; border-radius:3px; object-fit:cover; border:3px solid var(--line); background:#f0e4c9; }
+.dossier-photo.placeholder{ display:flex; align-items:center; justify-content:center; font-family:'Special Elite'; font-size:2rem; color:#b3a284; }
+.photo-edit-btn{
+  position:absolute; bottom:-6px; right:-6px; background: var(--line); color:#fdf9f0;
+  border:none; border-radius:50%; width:24px; height:24px; font-size:0.75rem; cursor:pointer;
+}
+.dossier-titles{ flex:1; min-width:0; }
+.dossier-titles input[type="text"]{
+  font-family:'Special Elite'; font-size:1.2rem; border:none; background:transparent; width:100%;
+  border-bottom: 1px dashed rgba(91,75,69,0.4); padding:2px 0; color: var(--line);
+}
+.dossier-titles .meta-line{ display:flex; gap:10px; margin-top:6px; flex-wrap:wrap; }
+.dossier-titles .meta-line select, .dossier-titles .meta-line input{
+  font-family:'Courier Prime'; font-size:0.78rem; padding:4px 6px; border:1px solid #b8a88f; border-radius:2px; background:#fffdf5;
+}
+.dossier-close{ background:none; border:none; font-size:1.4rem; cursor:pointer; color: var(--line); align-self:flex-start; }
+
+.tabs{ display:flex; gap:2px; padding: 10px 24px 0; background:#f0e0c4; border-bottom:3px solid var(--line); }
+.tab-btn{
+  font-family:'Courier Prime'; font-weight:700; font-size:0.78rem;
+  background:#e7d7b8; border:2px solid var(--line); border-bottom:none;
+  border-radius: 4px 4px 0 0; padding:8px 14px; cursor:pointer; color: var(--line);
+  transform: translateY(2px);
+}
+.tab-btn.active{ background:#fdf9f0; transform: translateY(0); }
+
+.tab-panel{ padding: 20px 24px 30px; display:none; }
+.tab-panel.active{ display:block; }
+
+.field-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:14px 18px; }
+.field{ display:flex; flex-direction:column; gap:4px; }
+.field.full{ grid-column: 1 / -1; }
+.field label{ font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--ink-soft); }
+.field input[type="text"], .field input[type="date"], .field select, .field textarea{
+  font-family:'Courier Prime'; font-size:0.86rem; padding:8px 10px;
+  border:1px solid #b8a88f; border-radius:2px; background:#fffdf5; color:#4a3f33;
+}
+.field textarea{ min-height:70px; resize:vertical; }
+.checkbox-row{ display:flex; align-items:center; gap:8px; }
+.checkbox-row label{ text-transform:none; font-size:0.82rem; color:var(--ink); }
+
+@media (max-width: 640px){ .field-grid{ grid-template-columns: 1fr; } }
+
+/* ---------- Progression tab ---------- */
+.progress-layout{ display:grid; grid-template-columns: 260px 1fr; gap:24px; }
+@media (max-width: 720px){ .progress-layout{ grid-template-columns: 1fr; } }
+.radar-box{ background:#fffdf5; border:1px solid #d8c9ac; border-radius:4px; padding:12px; text-align:center; }
+.radar-box .overall{ margin-top:8px; font-family:'Special Elite'; font-size:1.1rem; color: var(--line); }
+.skills-list{ display:flex; flex-direction:column; gap:10px; }
+.skill-row{ display:flex; align-items:center; gap:10px; background:#fffdf5; border:1px solid #d8c9ac; border-radius:3px; padding:8px 10px; }
+.skill-row .skill-name{ width:150px; font-size:0.8rem; font-weight:700; flex-shrink:0; }
+.skill-row select{ font-family:'Courier Prime'; font-size:0.8rem; padding:5px 8px; border:1px solid #b8a88f; border-radius:2px; background:#fff; }
+.skill-row .skill-comment{ flex:1; min-width:100px; font-family:'Courier Prime'; font-size:0.78rem; padding:5px 8px; border:1px solid #b8a88f; border-radius:2px; }
+
+.timeline{ margin-top:22px; }
+.timeline-title{ font-family:'Special Elite'; font-size:0.95rem; margin-bottom:10px; color: var(--line); }
+.timeline-entry{
+  border-left: 3px solid var(--stamp-red-dark); padding: 4px 0 4px 12px; margin-bottom:8px; font-size:0.82rem;
+}
+.timeline-entry .t-date{ color:var(--ink-soft); font-size:0.7rem; }
+.timeline-empty{ color:var(--ink-soft); font-style:italic; font-size:0.82rem; }
+
+.stamps-row{ display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.stamp{
+  font-family:'Special Elite'; font-size:0.72rem; background:#eef6ee; border:2px dashed var(--stamp-green-dark);
+  color:var(--stamp-green-dark); padding:6px 10px; border-radius:3px; transform: rotate(-2deg); display:flex; align-items:center; gap:6px;
+}
+.stamp .rm{ cursor:pointer; color:var(--stamp-red-dark); font-weight:700; }
+.add-stamp-row{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+.add-stamp-row input{ font-family:'Courier Prime'; padding:6px 10px; border:1px solid #b8a88f; border-radius:2px; flex:1; min-width:140px; }
+
+.dossier-footer{ padding: 14px 24px 24px; display:flex; gap:10px; flex-wrap:wrap; border-top:1px solid var(--rule); }
+
+/* ---------- Import modal ---------- */
+.import-box textarea{ width:100%; min-height:160px; font-family:'Courier Prime'; padding:10px; border:1px solid #b8a88f; border-radius:2px; }
+.import-help{ font-size:0.78rem; color:var(--ink-soft); margin: 6px 0 12px; }
+
+/* ---------- Toast ---------- */
+#toast{
+  position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+  background: var(--line); color:#fdf9f0; padding:10px 18px; border-radius:4px;
+  font-family:'Courier Prime'; font-size:0.82rem; z-index:200; opacity:0; pointer-events:none;
+  transition:opacity .25s ease;
+}
+#toast.show{ opacity:1; }
+
+/* ---------- Print ---------- */
+.print-only{ display:none; }
+@media print{
+  body *{ visibility:hidden; }
+  .print-only, .print-only *{ visibility:visible; }
+  .print-only{ display:block; position:absolute; top:0; left:0; }
+  .print-card{
+    width: 12.5cm; height: 8cm; border:1px solid #333; padding: 0.5cm; page-break-after: always;
+    font-family:'Courier Prime', monospace; position:relative;
+  }
+  .print-card h3{ font-family:'Special Elite'; margin:0 0 4px; font-size:14pt; }
+  .print-card .pc-row{ font-size:9pt; margin-bottom:3px; }
+  .print-card .pc-photo{ width:2.2cm; height:2.2cm; object-fit:cover; float:right; border:1px solid #333; }
+  .print-card .pc-skills{ display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  .print-card .pc-skill{ font-size:8pt; border:1px solid #333; padding:1px 5px; border-radius:8px; }
+}
+
+.sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="label-plate">
+      <h1>Le Fichier</h1>
+      <div class="sub">suivi individuel — anglais</div>
+    </div>
+    <div class="topbar-tools">
+      <button class="btn primary" id="btnAdd">+ Nouvelle fiche</button>
+      <button class="btn ghost" id="btnImport">Importer une liste</button>
+      <button class="btn ghost" id="btnExport">Exporter</button>
+      <button class="btn ghost" id="btnImportJson">Restaurer</button>
+      <input type="file" id="fileImportJson" accept="application/json" class="hidden">
+    </div>
+  </div>
+  <div class="searchrow">
+    <input type="text" id="searchInput" placeholder="Rechercher un élève…">
+    <select id="filterClass"><option value="">Toutes les classes</option></select>
+    <select id="sortBy">
+      <option value="nom">Trier : nom</option>
+      <option value="niveau">Trier : niveau global</option>
+      <option value="recent">Trier : mis à jour récemment</option>
+    </select>
+  </div>
+</div>
+
+<div class="drawer-wrap" id="drawerWrap"></div>
+
+<div id="toast"></div>
+
+<!-- Dossier modal -->
+<div class="overlay hidden" id="dossierOverlay">
+  <div class="dossier" id="dossierBox" role="dialog" aria-modal="true" aria-labelledby="dossierNameInput">
+    <div class="dossier-head">
+      <div class="dossier-photo-wrap">
+        <img class="dossier-photo hidden" id="dossierPhotoImg" alt="">
+        <div class="dossier-photo placeholder" id="dossierPhotoPlaceholder">?</div>
+        <button class="photo-edit-btn" id="btnEditPhoto" title="Changer la photo" aria-label="Changer la photo">✎</button>
+        <input type="file" id="filePhoto" accept="image/*" class="hidden">
+      </div>
+      <div class="dossier-titles">
+        <input type="text" id="dossierNameInput" placeholder="Nom Prénom">
+        <div class="meta-line">
+          <select id="dossierClassSelect"></select>
+          <input type="text" id="dossierClassNew" placeholder="ou nouvelle classe…" style="display:none;">
+        </div>
+      </div>
+      <button class="dossier-close" id="btnCloseDossier" aria-label="Fermer">✕</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="infos">Infos</button>
+      <button class="tab-btn" data-tab="progression">Progression</button>
+      <button class="tab-btn" data-tab="notes">Notes &amp; tampons</button>
+    </div>
+
+    <div class="tab-panel active" id="panel-infos">
+      <div class="field-grid">
+        <div class="field">
+          <label for="fDateNaissance">Date de naissance</label>
+          <input type="date" id="fDateNaissance">
+        </div>
+        <div class="field">
+          <label for="fLv2">LV2 / autre langue</label>
+          <input type="text" id="fLv2" placeholder="Espagnol, allemand…">
+        </div>
+        <div class="field full">
+          <label for="fParticularites">Particularités (PAP / PPRE / dys / allergies…)</label>
+          <input type="text" id="fParticularites" placeholder="Ex : PAP dyslexie, tiers-temps">
+        </div>
+        <div class="field full">
+          <label for="fContact">Contact référent</label>
+          <input type="text" id="fContact" placeholder="Nom du responsable, téléphone ou mail">
+        </div>
+        <div class="field full">
+          <label for="fNotesLibres">Notes libres</label>
+          <textarea id="fNotesLibres" placeholder="Observations générales…"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-progression">
+      <div class="progress-layout">
+        <div class="radar-box">
+          <canvas id="radarCanvas" width="230" height="230"></canvas>
+          <div class="overall">Niveau global : <span id="overallLevel">A1</span></div>
+        </div>
+        <div class="skills-list" id="skillsList"></div>
+      </div>
+      <div class="timeline">
+        <div class="timeline-title">Historique des évolutions</div>
+        <div id="timelineList"></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-notes">
+      <div class="field full">
+        <label for="fJournal">Journal d'observations datées</label>
+        <textarea id="fJournal" placeholder="Ajouter une observation…" style="min-height:50px;"></textarea>
+        <button class="btn small" id="btnAddJournal" style="margin-top:6px; align-self:flex-start;">Ajouter au journal</button>
+      </div>
+      <div class="timeline" id="journalList"></div>
+
+      <div class="timeline-title" style="margin-top:20px;">Tampons de réussite</div>
+      <div class="stamps-row" id="stampsRow"></div>
+      <div class="add-stamp-row">
+        <input type="text" id="newStampLabel" placeholder="Ex : Bonne participation, oral réussi…">
+        <button class="btn small" id="btnAddStamp">＋ Ajouter un tampon</button>
+      </div>
+    </div>
+
+    <div class="dossier-footer">
+      <button class="btn" id="btnPrintCard">Imprimer la fiche</button>
+      <button class="btn danger" id="btnDeleteStudent">Supprimer cette fiche</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import modal -->
+<div class="overlay hidden" id="importOverlay">
+  <div class="dossier import-box" style="padding:24px;">
+    <h2 style="margin-top:0;">Importer une liste d'élèves</h2>
+    <p class="import-help">Une ligne par élève. Formats acceptés : <code>Nom Prénom</code> ou <code>Nom Prénom, Classe</code>.</p>
+    <textarea id="importText" placeholder="Dupont Marie, 5eA&#10;Martin Léo, 5eA&#10;Bernard Chloé, 4eB"></textarea>
+    <div style="margin-top:14px; display:flex; gap:10px; justify-content:flex-end;">
+      <button class="btn ghost" id="btnCancelImport" style="color:#3a2c1a; border-color:#3a2c1a;">Annuler</button>
+      <button class="btn primary" id="btnConfirmImport">Importer</button>
+    </div>
+  </div>
+</div>
+
+<div class="print-only" id="printArea"></div>
+
+<script type="application/json" id="seedData">[]</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "fichier_eleves_v1";
+  var LEVELS = ["A1", "A1+", "A2", "A2+", "B1", "B1+", "B2"];
+  var LEVEL_SCORE = { "A1":1, "A1+":2, "A2":3, "A2+":4, "B1":5, "B1+":6, "B2":7 };
+  var SKILLS = [
+    { key:"CO", label:"Compréhension orale" },
+    { key:"CE", label:"Compréhension écrite" },
+    { key:"EOC", label:"Expression orale en continu" },
+    { key:"EOI", label:"Expression orale en interaction" },
+    { key:"EE", label:"Expression écrite" },
+    { key:"MED", label:"Médiation" }
+  ];
+
+  var state = { students: [] };
+  var currentId = null;
+  var currentTab = "infos";
+
+  function uid(){
+    return "s_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+  }
+
+  function loadState(){
+    var raw = null;
+    try { raw = localStorage.getItem(STORAGE_KEY); } catch(e){ raw = null; }
+    if (raw) {
+      try {
+        var parsed = JSON.parse(raw);
+        if (parsed && parsed.students) { state = parsed; return; }
+      } catch(e){}
+    }
+    var seedEl = document.getElementById("seedData");
+    var seed = [];
+    try { seed = JSON.parse(seedEl.textContent || "[]"); } catch(e){ seed = []; }
+    state = { students: seed };
+  }
+
+  function saveState(){
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e){
+      showToast("Stockage local indisponible : les modifications ne seront pas conservées.");
+    }
+  }
+
+  function newStudent(nom, classe){
+    var competences = {};
+    for (var i=0;i<SKILLS.length;i++){ competences[SKILLS[i].key] = "A1"; }
+    return {
+      id: uid(),
+      nom: nom || "Nouvel élève",
+      classe: classe || "",
+      photo: "",
+      dateNaissance: "",
+      lv2: "",
+      particularites: "",
+      contact: "",
+      notesLibres: "",
+      competences: competences,
+      historique: [],
+      journal: [],
+      tampons: [],
+      updatedAt: Date.now()
+    };
+  }
+
+  function showToast(msg){
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(showToast._to);
+    showToast._to = setTimeout(function(){ t.classList.remove("show"); }, 2400);
+  }
+
+  function overallLevelFor(student){
+    var total = 0, count = 0;
+    for (var i=0;i<SKILLS.length;i++){
+      var lvl = student.competences[SKILLS[i].key];
+      if (lvl && LEVEL_SCORE[lvl]) { total += LEVEL_SCORE[lvl]; count++; }
+    }
+    if (count === 0) return "A1";
+    var avg = Math.round(total / count);
+    for (var key in LEVEL_SCORE){ if (LEVEL_SCORE[key] === avg) return key; }
+    return "A1";
+  }
+
+  function levelClass(lvl){
+    if (!lvl) return "a1";
+    if (lvl.indexOf("A1") === 0) return "a1";
+    if (lvl.indexOf("A2") === 0) return "a2";
+    if (lvl.indexOf("B1") === 0) return "b1";
+    return "b2";
+  }
+
+  function escapeHtml(str){
+    if (!str) return "";
+    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function formatDate(ts){
+    var d = new Date(ts);
+    var dd = ("0" + d.getDate()).slice(-2);
+    var mm = ("0" + (d.getMonth()+1)).slice(-2);
+    return dd + "/" + mm + "/" + d.getFullYear();
+  }
+
+  /* ---------------- Rendering: catalog ---------------- */
+
+  function getClasses(){
+    var set = {};
+    for (var i=0;i<state.students.length;i++){
+      var c = state.students[i].classe || "Sans classe";
+      set[c] = true;
+    }
+    var arr = [];
+    for (var k in set){ arr.push(k); }
+    arr.sort();
+    return arr;
+  }
+
+  function refreshClassFilter(){
+    var sel = document.getElementById("filterClass");
+    var current = sel.value;
+    sel.innerHTML = '<option value="">Toutes les classes</option>';
+    var classes = getClasses();
+    for (var i=0;i<classes.length;i++){
+      var opt = document.createElement("option");
+      opt.value = classes[i];
+      opt.textContent = classes[i];
+      sel.appendChild(opt);
+    }
+    sel.value = current;
+  }
+
+  function renderCatalog(){
+    var wrap = document.getElementById("drawerWrap");
+    var search = document.getElementById("searchInput").value.trim().toLowerCase();
+    var filterClass = document.getElementById("filterClass").value;
+    var sortBy = document.getElementById("sortBy").value;
+
+    var filtered = state.students.filter(function(s){
+      var matchSearch = !search || (s.nom || "").toLowerCase().indexOf(search) !== -1;
+      var matchClass = !filterClass || (s.classe || "Sans classe") === filterClass;
+      return matchSearch && matchClass;
+    });
+
+    if (filtered.length === 0){
+      wrap.innerHTML = "";
+      var empty = document.createElement("div");
+      empty.className = "empty-catalog";
+      empty.innerHTML = state.students.length === 0
+        ? "Le tiroir est vide.<br>Ajoutez une fiche ou importez une liste d'élèves."
+        : "Aucune fiche ne correspond à la recherche.";
+      wrap.appendChild(empty);
+      if (state.students.length === 0){
+        var b = document.createElement("button");
+        b.className = "btn primary";
+        b.textContent = "+ Nouvelle fiche";
+        b.onclick = function(){ openDossier(null); };
+        empty.appendChild(b);
+      }
+      return;
+    }
+
+    var groups = {};
+    for (var i=0;i<filtered.length;i++){
+      var c = filtered[i].classe || "Sans classe";
+      if (!groups[c]) groups[c] = [];
+      groups[c].push(filtered[i]);
+    }
+    var classNames = [];
+    for (var k in groups) classNames.push(k);
+    classNames.sort();
+
+    wrap.innerHTML = "";
+    for (var g=0; g<classNames.length; g++){
+      var cname = classNames[g];
+      var list = groups[cname].slice();
+      if (sortBy === "nom") list.sort(function(a,b){ return (a.nom||"").localeCompare(b.nom||""); });
+      else if (sortBy === "niveau") list.sort(function(a,b){ return LEVEL_SCORE[overallLevelFor(b)] - LEVEL_SCORE[overallLevelFor(a)]; });
+      else if (sortBy === "recent") list.sort(function(a,b){ return (b.updatedAt||0) - (a.updatedAt||0); });
+
+      var section = document.createElement("div");
+      section.className = "class-section";
+      var title = document.createElement("div");
+      title.className = "class-section-title";
+      title.innerHTML = '<span class="serif">' + escapeHtml(cname) + '</span><span class="count">' + list.length + ' fiche' + (list.length>1?"s":"") + '</span>';
+      section.appendChild(title);
+
+      var grid = document.createElement("div");
+      grid.className = "card-grid";
+      for (var j=0;j<list.length;j++){
+        grid.appendChild(renderCardEl(list[j]));
+      }
+      section.appendChild(grid);
+      wrap.appendChild(section);
+    }
+  }
+
+  function renderCardEl(s){
+    var el = document.createElement("div");
+    el.className = "index-card";
+    el.setAttribute("tabindex", "0");
+    el.setAttribute("role", "button");
+    el.setAttribute("aria-label", "Ouvrir la fiche de " + (s.nom || "élève"));
+    el.onclick = function(){ openDossier(s.id); };
+    el.onkeydown = function(e){ if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDossier(s.id); } };
+
+    var rule = document.createElement("div");
+    rule.className = "rule-margin";
+    el.appendChild(rule);
+
+    if (s.particularites){
+      var flags = document.createElement("div");
+      flags.className = "card-flags";
+      flags.title = s.particularites;
+      var dot = document.createElement("div");
+      dot.className = "flag-dot";
+      flags.appendChild(dot);
+      el.appendChild(flags);
+    }
+
+    if (s.photo){
+      var img = document.createElement("img");
+      img.className = "card-photo";
+      img.src = s.photo;
+      img.alt = "";
+      el.appendChild(img);
+    } else {
+      var ph = document.createElement("div");
+      ph.className = "card-photo placeholder";
+      ph.textContent = (s.nom || "?").charAt(0).toUpperCase();
+      el.appendChild(ph);
+    }
+
+    var name = document.createElement("div");
+    name.className = "card-name";
+    name.textContent = s.nom || "Sans nom";
+    el.appendChild(name);
+
+    var cls = document.createElement("div");
+    cls.className = "card-class";
+    cls.textContent = s.classe || "Sans classe";
+    el.appendChild(cls);
+
+    var levelsRow = document.createElement("div");
+    levelsRow.className = "card-levels";
+    for (var i=0;i<SKILLS.length;i++){
+      var lvl = s.competences[SKILLS[i].key];
+      var pill = document.createElement("span");
+      pill.className = "pill " + levelClass(lvl);
+      pill.textContent = SKILLS[i].key + " " + lvl;
+      levelsRow.appendChild(pill);
+    }
+    el.appendChild(levelsRow);
+
+    var noteCount = (s.journal ? s.journal.length : 0) + (s.tampons ? s.tampons.length : 0);
+    if (noteCount > 0){
+      var nc = document.createElement("div");
+      nc.className = "card-note-count";
+      nc.textContent = noteCount + " observation" + (noteCount>1?"s":"") + " au dossier";
+      el.appendChild(nc);
+    }
+
+    return el;
+  }
+
+  /* ---------------- Dossier modal ---------------- */
+
+  function openDossier(id){
+    if (id === null){
+      var s = newStudent("", "");
+      state.students.push(s);
+      currentId = s.id;
+      saveState();
+    } else {
+      currentId = id;
+    }
+    switchTab("infos");
+    renderDossier();
+    document.getElementById("dossierOverlay").classList.remove("hidden");
+    document.getElementById("dossierNameInput").focus();
+  }
+
+  function closeDossier(){
+    var s = getCurrent();
+    if (s && !s.nom) { s.nom = "Sans nom"; }
+    // remove fully empty unsaved students created then abandoned with no data at all
+    saveState();
+    document.getElementById("dossierOverlay").classList.add("hidden");
+    currentId = null;
+    refreshClassFilter();
+    renderCatalog();
+  }
+
+  function getCurrent(){
+    for (var i=0;i<state.students.length;i++){
+      if (state.students[i].id === currentId) return state.students[i];
+    }
+    return null;
+  }
+
+  function switchTab(tab){
+    currentTab = tab;
+    var btns = document.querySelectorAll(".tab-btn");
+    for (var i=0;i<btns.length;i++){
+      btns[i].classList.toggle("active", btns[i].getAttribute("data-tab") === tab);
+    }
+    var panels = document.querySelectorAll(".tab-panel");
+    for (var j=0;j<panels.length;j++){
+      panels[j].classList.toggle("active", panels[j].id === "panel-" + tab);
+    }
+  }
+
+  function renderDossier(){
+    var s = getCurrent();
+    if (!s) return;
+
+    document.getElementById("dossierNameInput").value = s.nom || "";
+
+    var classSel = document.getElementById("dossierClassSelect");
+    var classes = getClasses();
+    classSel.innerHTML = "";
+    var hasCurrent = false;
+    for (var i=0;i<classes.length;i++){
+      var opt = document.createElement("option");
+      opt.value = classes[i];
+      opt.textContent = classes[i];
+      if (classes[i] === (s.classe || "Sans classe")) hasCurrent = true;
+      classSel.appendChild(opt);
+    }
+    var optNew = document.createElement("option");
+    optNew.value = "__new__";
+    optNew.textContent = "＋ Nouvelle classe…";
+    classSel.appendChild(optNew);
+    classSel.value = hasCurrent ? (s.classe || "Sans classe") : (s.classe ? s.classe : classes[0] || "__new__");
+    document.getElementById("dossierClassNew").style.display = "none";
+    document.getElementById("dossierClassNew").value = "";
+
+    var photoImg = document.getElementById("dossierPhotoImg");
+    var photoPh = document.getElementById("dossierPhotoPlaceholder");
+    if (s.photo){
+      photoImg.src = s.photo; photoImg.classList.remove("hidden"); photoPh.classList.add("hidden");
+    } else {
+      photoImg.classList.add("hidden"); photoPh.classList.remove("hidden");
+      photoPh.textContent = (s.nom || "?").charAt(0).toUpperCase();
+    }
+
+    document.getElementById("fDateNaissance").value = s.dateNaissance || "";
+    document.getElementById("fLv2").value = s.lv2 || "";
+    document.getElementById("fParticularites").value = s.particularites || "";
+    document.getElementById("fContact").value = s.contact || "";
+    document.getElementById("fNotesLibres").value = s.notesLibres || "";
+
+    renderSkills(s);
+    renderRadar(s);
+    renderTimeline(s);
+    renderJournal(s);
+    renderStamps(s);
+  }
+
+  function renderSkills(s){
+    var list = document.getElementById("skillsList");
+    list.innerHTML = "";
+    for (var i=0;i<SKILLS.length;i++){
+      (function(skill){
+        var row = document.createElement("div");
+        row.className = "skill-row";
+        var name = document.createElement("div");
+        name.className = "skill-name";
+        name.textContent = skill.label;
+        row.appendChild(name);
+
+        var sel = document.createElement("select");
+        for (var j=0;j<LEVELS.length;j++){
+          var opt = document.createElement("option");
+          opt.value = LEVELS[j];
+          opt.textContent = LEVELS[j];
+          sel.appendChild(opt);
+        }
+        sel.value = s.competences[skill.key] || "A1";
+        sel.onchange = function(){
+          var oldLvl = s.competences[skill.key];
+          var newLvl = sel.value;
+          if (oldLvl === newLvl) return;
+          s.competences[skill.key] = newLvl;
+          s.historique.unshift({ date: Date.now(), competence: skill.label, niveau: newLvl, commentaire: comment.value || "" });
+          s.updatedAt = Date.now();
+          saveState();
+          renderRadar(s);
+          renderTimeline(s);
+          document.getElementById("overallLevel").textContent = overallLevelFor(s);
+        };
+        row.appendChild(sel);
+
+        var comment = document.createElement("input");
+        comment.className = "skill-comment";
+        comment.type = "text";
+        comment.placeholder = "commentaire (optionnel)";
+        row.appendChild(comment);
+
+        list.appendChild(row);
+      })(SKILLS[i]);
+    }
+    document.getElementById("overallLevel").textContent = overallLevelFor(s);
+  }
+
+  function renderRadar(s){
+    var canvas = document.getElementById("radarCanvas");
+    var ctx = canvas.getContext("2d");
+    var w = canvas.width, h = canvas.height;
+    var cx = w/2, cy = h/2, r = Math.min(w,h)/2 - 28;
+    var n = SKILLS.length;
+
+    ctx.clearRect(0,0,w,h);
+    ctx.font = "10px 'Courier Prime', monospace";
+    ctx.fillStyle = "#4a4340";
+    ctx.strokeStyle = "rgba(74,67,64,0.2)";
+
+    // grid rings
+    for (var ring=1; ring<=4; ring++){
+      ctx.beginPath();
+      for (var i=0;i<=n;i++){
+        var ang = (Math.PI*2*i/n) - Math.PI/2;
+        var rr = r * (ring/4);
+        var x = cx + Math.cos(ang)*rr, y = cy + Math.sin(ang)*rr;
+        if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+    }
+    // axes + labels
+    for (var i2=0;i2<n;i2++){
+      var ang2 = (Math.PI*2*i2/n) - Math.PI/2;
+      var x2 = cx + Math.cos(ang2)*r, y2 = cy + Math.sin(ang2)*r;
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(x2,y2); ctx.stroke();
+      var lx = cx + Math.cos(ang2)*(r+16), ly = cy + Math.sin(ang2)*(r+16);
+      ctx.textAlign = Math.abs(Math.cos(ang2)) < 0.2 ? "center" : (Math.cos(ang2) > 0 ? "left" : "right");
+      ctx.fillText(SKILLS[i2].key, lx, ly+3);
+    }
+    // data polygon
+    ctx.beginPath();
+    for (var i3=0;i3<n;i3++){
+      var ang3 = (Math.PI*2*i3/n) - Math.PI/2;
+      var score = LEVEL_SCORE[s.competences[SKILLS[i3].key]] || 1;
+      var rr3 = r * (score/7);
+      var x3 = cx + Math.cos(ang3)*rr3, y3 = cy + Math.sin(ang3)*rr3;
+      if (i3===0) ctx.moveTo(x3,y3); else ctx.lineTo(x3,y3);
+    }
+    ctx.closePath();
+    ctx.fillStyle = "rgba(226,167,155,0.55)";
+    ctx.strokeStyle = "#b97a6c";
+    ctx.lineWidth = 2;
+    ctx.fill();
+    ctx.stroke();
+    ctx.lineWidth = 1;
+  }
+
+  function renderTimeline(s){
+    var el = document.getElementById("timelineList");
+    if (!s.historique || s.historique.length === 0){
+      el.innerHTML = '<div class="timeline-empty">Aucune évolution enregistrée pour le moment.</div>';
+      return;
+    }
+    el.innerHTML = "";
+    for (var i=0;i<s.historique.length;i++){
+      var h = s.historique[i];
+      var d = document.createElement("div");
+      d.className = "timeline-entry";
+      d.innerHTML = '<div class="t-date">' + formatDate(h.date) + '</div>' +
+        escapeHtml(h.competence) + ' → <strong>' + escapeHtml(h.niveau) + '</strong>' +
+        (h.commentaire ? ' — ' + escapeHtml(h.commentaire) : '');
+      el.appendChild(d);
+    }
+  }
+
+  function renderJournal(s){
+    var el = document.getElementById("journalList");
+    if (!s.journal || s.journal.length === 0){
+      el.innerHTML = '<div class="timeline-empty">Aucune observation pour le moment.</div>';
+      return;
+    }
+    el.innerHTML = "";
+    for (var i=0;i<s.journal.length;i++){
+      var j = s.journal[i];
+      var d = document.createElement("div");
+      d.className = "timeline-entry";
+      d.innerHTML = '<div class="t-date">' + formatDate(j.date) + '</div>' + escapeHtml(j.texte);
+      el.appendChild(d);
+    }
+  }
+
+  function renderStamps(s){
+    var el = document.getElementById("stampsRow");
+    el.innerHTML = "";
+    if (!s.tampons || s.tampons.length === 0){
+      var empty = document.createElement("div");
+      empty.className = "timeline-empty";
+      empty.textContent = "Aucun tampon pour le moment.";
+      el.appendChild(empty);
+      return;
+    }
+    for (var i=0;i<s.tampons.length;i++){
+      (function(t, idx){
+        var st = document.createElement("div");
+        st.className = "stamp";
+        st.innerHTML = '<span>★ ' + escapeHtml(t.label) + '</span>';
+        var rm = document.createElement("span");
+        rm.className = "rm";
+        rm.textContent = "✕";
+        rm.title = "Retirer ce tampon";
+        rm.onclick = function(){
+          s.tampons.splice(idx, 1);
+          s.updatedAt = Date.now();
+          saveState();
+          renderStamps(s);
+        };
+        st.appendChild(rm);
+        el.appendChild(st);
+      })(s.tampons[i], i);
+    }
+  }
+
+  /* ---------------- Field bindings ---------------- */
+
+  function bindField(inputId, prop){
+    document.getElementById(inputId).addEventListener("input", function(){
+      var s = getCurrent();
+      if (!s) return;
+      s[prop] = this.value;
+      s.updatedAt = Date.now();
+      saveState();
+    });
+  }
+
+  function initFieldBindings(){
+    document.getElementById("dossierNameInput").addEventListener("input", function(){
+      var s = getCurrent();
+      if (!s) return;
+      s.nom = this.value;
+      s.updatedAt = Date.now();
+      saveState();
+    });
+
+    document.getElementById("dossierClassSelect").addEventListener("change", function(){
+      var s = getCurrent();
+      if (!s) return;
+      if (this.value === "__new__"){
+        document.getElementById("dossierClassNew").style.display = "inline-block";
+        document.getElementById("dossierClassNew").focus();
+      } else {
+        document.getElementById("dossierClassNew").style.display = "none";
+        s.classe = this.value === "Sans classe" ? "" : this.value;
+        s.updatedAt = Date.now();
+        saveState();
+      }
+    });
+    document.getElementById("dossierClassNew").addEventListener("input", function(){
+      var s = getCurrent();
+      if (!s) return;
+      s.classe = this.value;
+      s.updatedAt = Date.now();
+      saveState();
+    });
+
+    bindField("fDateNaissance", "dateNaissance");
+    bindField("fLv2", "lv2");
+    bindField("fParticularites", "particularites");
+    bindField("fContact", "contact");
+    bindField("fNotesLibres", "notesLibres");
+
+    document.getElementById("btnAddJournal").onclick = function(){
+      var s = getCurrent();
+      if (!s) return;
+      var val = document.getElementById("fJournal").value.trim();
+      if (!val) return;
+      s.journal = s.journal || [];
+      s.journal.unshift({ date: Date.now(), texte: val });
+      s.updatedAt = Date.now();
+      document.getElementById("fJournal").value = "";
+      saveState();
+      renderJournal(s);
+      renderCatalog();
+    };
+
+    document.getElementById("btnAddStamp").onclick = function(){
+      var s = getCurrent();
+      if (!s) return;
+      var val = document.getElementById("newStampLabel").value.trim();
+      if (!val) return;
+      s.tampons = s.tampons || [];
+      s.tampons.push({ label: val, date: Date.now() });
+      s.updatedAt = Date.now();
+      document.getElementById("newStampLabel").value = "";
+      saveState();
+      renderStamps(s);
+      renderCatalog();
+    };
+
+    document.getElementById("btnEditPhoto").onclick = function(){
+      document.getElementById("filePhoto").click();
+    };
+    document.getElementById("filePhoto").addEventListener("change", function(e){
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(ev){
+        resizeImage(ev.target.result, 200, function(dataUrl){
+          var s = getCurrent();
+          if (!s) return;
+          s.photo = dataUrl;
+          s.updatedAt = Date.now();
+          saveState();
+          renderDossier();
+          renderCatalog();
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById("btnDeleteStudent").onclick = function(){
+      var s = getCurrent();
+      if (!s) return;
+      if (!confirm("Supprimer définitivement la fiche de " + (s.nom || "cet élève") + " ?")) return;
+      state.students = state.students.filter(function(x){ return x.id !== s.id; });
+      saveState();
+      document.getElementById("dossierOverlay").classList.add("hidden");
+      currentId = null;
+      refreshClassFilter();
+      renderCatalog();
+      showToast("Fiche supprimée.");
+    };
+
+    document.getElementById("btnPrintCard").onclick = function(){
+      var s = getCurrent();
+      if (!s) return;
+      buildPrintArea([s]);
+      window.print();
+    };
+  }
+
+  function resizeImage(dataUrl, maxSize, cb){
+    var img = new Image();
+    img.onload = function(){
+      var canvas = document.createElement("canvas");
+      var scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      var ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      cb(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.src = dataUrl;
+  }
+
+  function buildPrintArea(students){
+    var area = document.getElementById("printArea");
+    area.innerHTML = "";
+    for (var i=0;i<students.length;i++){
+      var s = students[i];
+      var card = document.createElement("div");
+      card.className = "print-card";
+      var photoHtml = s.photo ? '<img class="pc-photo" src="' + s.photo + '">' : "";
+      var skillsHtml = "";
+      for (var j=0;j<SKILLS.length;j++){
+        skillsHtml += '<span class="pc-skill">' + SKILLS[j].key + ' ' + escapeHtml(s.competences[SKILLS[j].key]) + '</span>';
+      }
+      card.innerHTML =
+        photoHtml +
+        '<h3>' + escapeHtml(s.nom || "Sans nom") + '</h3>' +
+        '<div class="pc-row">Classe : ' + escapeHtml(s.classe || "—") + '</div>' +
+        '<div class="pc-row">Né(e) le : ' + escapeHtml(s.dateNaissance || "—") + ' — LV2 : ' + escapeHtml(s.lv2 || "—") + '</div>' +
+        '<div class="pc-row">Particularités : ' + escapeHtml(s.particularites || "—") + '</div>' +
+        '<div class="pc-row">Niveau global : ' + overallLevelFor(s) + '</div>' +
+        '<div class="pc-skills">' + skillsHtml + '</div>';
+      area.appendChild(card);
+    }
+  }
+
+  /* ---------------- Import / Export ---------------- */
+
+  function parseImportText(text){
+    var lines = text.split("\n");
+    var results = [];
+    for (var i=0;i<lines.length;i++){
+      var line = lines[i].trim();
+      if (!line) continue;
+      var parts = line.split(",");
+      var nom = parts[0] ? parts[0].trim() : "";
+      var classe = parts[1] ? parts[1].trim() : "";
+      if (nom) results.push({ nom: nom, classe: classe });
+    }
+    return results;
+  }
+
+  function doExport(){
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "le-fichier-eleves-" + new Date().toISOString().slice(0,10) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast("Export terminé.");
+  }
+
+  function doImportJson(file){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try {
+        var parsed = JSON.parse(e.target.result);
+        if (!parsed || !parsed.students) throw new Error("format invalide");
+        if (!confirm("Remplacer toutes les fiches actuelles par celles du fichier importé ?")) return;
+        state = parsed;
+        saveState();
+        refreshClassFilter();
+        renderCatalog();
+        showToast("Restauration effectuée.");
+      } catch(err){
+        alert("Fichier invalide : impossible de lire cette sauvegarde.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ---------------- Wiring ---------------- */
+
+  function initTopbar(){
+    document.getElementById("btnAdd").onclick = function(){ openDossier(null); };
+    document.getElementById("searchInput").addEventListener("input", renderCatalog);
+    document.getElementById("filterClass").addEventListener("change", renderCatalog);
+    document.getElementById("sortBy").addEventListener("change", renderCatalog);
+
+    document.getElementById("btnExport").onclick = doExport;
+    document.getElementById("btnImportJson").onclick = function(){ document.getElementById("fileImportJson").click(); };
+    document.getElementById("fileImportJson").addEventListener("change", function(e){
+      if (e.target.files[0]) doImportJson(e.target.files[0]);
+      e.target.value = "";
+    });
+
+    document.getElementById("btnImport").onclick = function(){
+      document.getElementById("importText").value = "";
+      document.getElementById("importOverlay").classList.remove("hidden");
+    };
+    document.getElementById("btnCancelImport").onclick = function(){
+      document.getElementById("importOverlay").classList.add("hidden");
+    };
+    document.getElementById("btnConfirmImport").onclick = function(){
+      var text = document.getElementById("importText").value;
+      var parsed = parseImportText(text);
+      if (parsed.length === 0){ showToast("Rien à importer."); return; }
+      for (var i=0;i<parsed.length;i++){
+        state.students.push(newStudent(parsed[i].nom, parsed[i].classe));
+      }
+      saveState();
+      document.getElementById("importOverlay").classList.add("hidden");
+      refreshClassFilter();
+      renderCatalog();
+      showToast(parsed.length + " fiche(s) créée(s).");
+    };
+  }
+
+  function initDossierChrome(){
+    document.getElementById("btnCloseDossier").onclick = closeDossier;
+    document.getElementById("dossierOverlay").addEventListener("click", function(e){
+      if (e.target === this) closeDossier();
+    });
+    document.addEventListener("keydown", function(e){
+      if (e.key === "Escape" && !document.getElementById("dossierOverlay").classList.contains("hidden")){
+        closeDossier();
+      }
+    });
+    var tabBtns = document.querySelectorAll(".tab-btn");
+    for (var i=0;i<tabBtns.length;i++){
+      tabBtns[i].onclick = function(){ switchTab(this.getAttribute("data-tab")); };
+    }
+  }
+
+  function init(){
+    loadState();
+    refreshClassFilter();
+    renderCatalog();
+    initTopbar();
+    initFieldBindings();
+    initDossierChrome();
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+})();
+</script>
+</body>
+</html>
